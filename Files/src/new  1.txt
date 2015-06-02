@@ -1,0 +1,3513 @@
+/*
+0002.
+*   CLASS:      PCA
+0003.
+*
+0004.
+*   USAGE:      Principlal Component Analysis
+0005.
+*
+0006.
+*   This is a subclass of the superclass Scores
+0007.
+*
+0008.
+*
+0009.
+*   WRITTEN BY: Dr Michael Thomas Flanagan
+0010.
+*
+0011.
+*   DATE:       October 2008
+0012.
+*   AMENDED:    17-18 October 2008
+0013.
+*
+0014.
+*   DOCUMENTATION:
+0015.
+*   See Michael Thomas Flanagan's Java library on-line web pages:
+0016.
+*   http://www.ee.ucl.ac.uk/~mflanaga/java/
+0017.
+*   http://www.ee.ucl.ac.uk/~mflanaga/java/PCA.html
+0018.
+*
+0019.
+*   Copyright (c) 2008 Michael Thomas Flanagan
+0020.
+*
+0021.
+*   PERMISSION TO COPY:
+0022.
+*
+0023.
+* Permission to use, copy and modify this software and its documentation for NON-COMMERCIAL purposes is granted, without fee,
+0024.
+* provided that an acknowledgement to the author, Dr Michael Thomas Flanagan at www.ee.ucl.ac.uk/~mflanaga, appears in all copies
+0025.
+* and associated documentation or publications.
+0026.
+*
+0027.
+* Redistributions of the source code of this source code, or parts of the source codes, must retain the above copyright notice, this list of conditions
+0028.
+* and the following disclaimer and requires written permission from the Michael Thomas Flanagan:
+0029.
+*
+0030.
+* Redistribution in binary form of all or parts of this class must reproduce the above copyright notice, this list of conditions and
+0031.
+* the following disclaimer in the documentation and/or other materials provided with the distribution and requires written permission from the Michael Thomas Flanagan:
+0032.
+*
+0033.
+* Dr Michael Thomas Flanagan makes no representations about the suitability or fitness of the software for any or for a particular purpose.
+0034.
+* Dr Michael Thomas Flanagan shall not be liable for any damages suffered as a result of using, modifying or distributing this software
+0035.
+* or its derivatives.
+0036.
+*
+0037.
+***************************************************************************************/
+0038.
+ 
+0039.
+ 
+0040.
+package flanagan.analysis;
+0041.
+ 
+0042.
+import java.util.*;
+0043.
+import java.text.*;
+0044.
+import java.awt.*;
+0045.
+ 
+0046.
+import flanagan.math.*;
+0047.
+import flanagan.io.*;
+0048.
+import flanagan.analysis.*;
+0049.
+import flanagan.plot.*;
+0050.
+ 
+0051.
+ 
+0052.
+public class PCA extends Scores{
+0053.
+ 
+0054.
+private Matrix data = null;                                         // data as row per item as a Matrix
+0055.
+private Matrix dataMinusMeans = null;                               // data with row means subtracted as row per item as a Matrix
+0056.
+private Matrix dataMinusMeansTranspose = null;                      // data with row means subtracted as row per item as a Matrix
+0057.
+private Matrix covarianceMatrix = null;                             // variance-covariance Matrix
+0058.
+private Matrix correlationMatrix = null;                            // variance-covariance Matrix
+0059.
+ 
+0060.
+private double[] eigenValues = null;                                // eigenvalues
+0061.
+private double[] orderedEigenValues = null;                         // eigenvalues sorted into a descending order
+0062.
+private int[] eigenValueIndices = null;                             // indices of the eigenvalues before sorting into a descending order
+0063.
+private double eigenValueTotal = 0.0;                               // total of all eigen values;
+0064.
+ 
+0065.
+private double[] rotatedEigenValues = null;                         // scaled rotated eigenvalues
+0066.
+private double[] usRotatedEigenValues = null;                       // unscaled rotated eigenvalues
+0067.
+ 
+0068.
+ 
+0069.
+private int nMonteCarlo = 200;                                      // number of Monte Carlo generated eigenvalue calculations
+0070.
+private double[][] randomEigenValues = null;                        // Monte Carlo generated eigenvalues
+0071.
+private double[] randomEigenValuesMeans = null;                     // means of the Monte Carlo generated eigenvalues
+0072.
+private double[] randomEigenValuesSDs = null;                       // standard deviations of the Monte Carlo generated eigenvalues
+0073.
+private double[] randomEigenValuesPercentiles = null;               // percentiles of the Monte Carlo generated eigenvalues
+0074.
+private double percentile = 95.0;                                   // percentile used in parallel analysis
+0075.
+private boolean gaussianDeviates = false;                           // = false: uniform random deviates used in Monte Carlo
+0076.
+// = true:  Gaussian random deviates used in Monte Carlo
+0077.
+private double[] proportionPercentage = null;                       // eigenvalues expressesed as percentage of total
+0078.
+private double[] cumulativePercentage = null;                       // cumulative values of the eigenvalues expressesed as percentage of total
+0079.
+private double[] rotatedProportionPercentage = null;                // scaled rotated eigenvalues expressesed as percentage of unrotated total
+0080.
+private double[] rotatedCumulativePercentage = null;                // scaled rotated cumulative values of the eigenvalues expressesed as percentage of unrotated total
+0081.
+ 
+0082.
+private double[][] eigenVectorsAsColumns = null;                    // eigenvectors as columns
+0083.
+private double[][] eigenVectorsAsRows = null;                       // eigenvectors as rows
+0084.
+ 
+0085.
+private double[][] orderedEigenVectorsAsColumns = null;             // eigenvectors, as columns, arranged to match a descending order of eigenvalues
+0086.
+private double[][] orderedEigenVectorsAsRows = null;                // eigenvectors, as rows, arranged to match a descending order of eigenvalues
+0087.
+ 
+0088.
+private double[][] loadingFactorsAsColumns = null;                  // loading factors as column per eigenvalue
+0089.
+private double[][] loadingFactorsAsRows = null;                     // loading factors as row per eigenvalue
+0090.
+ 
+0091.
+private double[][] rotatedLoadingFactorsAsColumns = null;           // scaled rotated loading factors as column per eigenvalue
+0092.
+private double[][] rotatedLoadingFactorsAsRows = null;              // scaled rotated loading factors as row per eigenvalue
+0093.
+private double[][] usRotatedLoadingFactorsAsColumns = null;         // unscaled rotated loading factors as column per eigenvalue
+0094.
+private double[][] usRotatedLoadingFactorsAsRows = null;            // unscaled rotated loading factors as row per eigenvalue
+0095.
+ 
+0096.
+private double[] communalities = null;                              // communalities
+0097.
+ 
+0098.
+ 
+0099.
+private boolean covRhoOption = false;                               // = true:   covariance matrix used
+0100.
+// = false:  correlation matrix used
+0101.
+ 
+0102.
+private int greaterThanOneLimit = 0;                                // number of components extracted using eigenvalue greater than one
+0103.
+private int percentileCrossover = 0;                                // number of components extracted using percentile scree crossover
+0104.
+private int meanCrossover = 0;                                      // number of components extracted using mean scree crossover
+0105.
+ 
+0106.
+private int nVarimaxMax = 1000;                                     // maximum iterations allowed by the varimax criterion
+0107.
+private int nVarimax = 0;                                           // number of iterations taken by the varimax criterion
+0108.
+private double varimaxTolerance = 0.0001;                           // tolerance for terminatiing 2 criterion iteration
+0109.
+ 
+0110.
+private boolean varimaxOption = true;                               // = true:  normal varimax, i.e. comunality weighted varimax
+0111.
+// = false: raw varimax
+0112.
+private boolean pcaDone = false;                                    // = true when PCA performed
+0113.
+private boolean monteCarloDone = false;                             // = true when parallel monte Carlo simultaion performed
+0114.
+private boolean rotationDone = false;                               // = true when rotation performed
+0115.
+ 
+0116.
+// CONSTRUCTOR
+0117.
+public PCA(){
+0118.
+super.trunc = 4;
+0119.
+}
+0120.
+ 
+0121.
+// CHOICE OF MATRIX
+0122.
+// Use covariance matrix (default option)
+0123.
+public void useCovarianceMatrix(){
+0124.
+this.covRhoOption = true;
+0125.
+}
+0126.
+ 
+0127.
+// Use correlation matrix (default option)
+0128.
+public void useCorrelationMatrix(){
+0129.
+this.covRhoOption = false;
+0130.
+}
+0131.
+ 
+0132.
+// CHOICE OF VARIMAX CRITERION
+0133.
+// Use normal varimax rotation
+0134.
+public void useNormalVarimax(){
+0135.
+this. varimaxOption = true;
+0136.
+}
+0137.
+ 
+0138.
+// Use raw varimax rotation
+0139.
+public void useRawVarimax(){
+0140.
+this. varimaxOption = false;
+0141.
+}
+0142.
+ 
+0143.
+// Return varimax rotation option
+0144.
+public String getVarimaxOption(){
+0145.
+if(this. varimaxOption){
+0146.
+return "normal varimax option";
+0147.
+}
+0148.
+else{
+0149.
+return "raw varimax option";
+0150.
+}
+0151.
+}
+0152.
+ 
+0153.
+// PARALLEL ANALYSIS OPTIONS
+0154.
+// Reset number of Monte Carlo simulations
+0155.
+public void setNumberOfSimulations(int nSimul){
+0156.
+this.nMonteCarlo = nSimul;
+0157.
+}
+0158.
+ 
+0159.
+// Return number of Monte Carlo simulations
+0160.
+public int getNumberOfSimulations(){
+0161.
+return this.nMonteCarlo;
+0162.
+}
+0163.
+ 
+0164.
+// Use Gaussian random deviates in MontMonte Carlo simulations
+0165.
+public void useGaussianDeviates(){
+0166.
+this.gaussianDeviates = true;
+0167.
+}
+0168.
+ 
+0169.
+// Use uniform random deviates in MontMonte Carlo simulations
+0170.
+public void useUniformDeviates(){
+0171.
+this.gaussianDeviates = false;
+0172.
+}
+0173.
+ 
+0174.
+// Reset percentile percentage in parallel analysis (defalut option = 95%)
+0175.
+public void setParallelAnalysisPercentileValue(double percent){
+0176.
+this.percentile = percent;
+0177.
+}
+0178.
+ 
+0179.
+// Return percentile percentage in parallel analysis (defalut option = 95%)
+0180.
+public double getParallelAnalysisPercentileValue(){
+0181.
+return this.percentile;
+0182.
+}
+0183.
+ 
+0184.
+// PRINCIPAL COMPONENT ANALYSIS
+0185.
+public void pca(){
+0186.
+ 
+0187.
+if(!this.pcaDone){
+0188.
+ 
+0189.
+if(this.nItems==1)throw new IllegalArgumentException("You have entered only one item - PCA is not meaningful");
+0190.
+if(this.nPersons==1)throw new IllegalArgumentException("You have entered only one score or measurement source - PCA is not meaningful");
+0191.
+ 
+0192.
+// Check that data is preprocessed
+0193.
+if(!this.dataPreprocessed)this.preprocessData();
+0194.
+ 
+0195.
+// Store data as an instance of matrix
+0196.
+this.data = new Matrix(super.scores0);
+0197.
+ 
+0198.
+// Subtract row means
+0199.
+this.dataMinusMeans = this.data.subtractRowMeans();
+0200.
+ 
+0201.
+// Transpose
+0202.
+this.dataMinusMeansTranspose = this.dataMinusMeans.transpose();
+0203.
+ 
+0204.
+// Covariance matrix
+0205.
+this.covarianceMatrix = this.dataMinusMeans.times(this.dataMinusMeansTranspose);
+0206.
+double denom = this.nPersons;
+0207.
+if(!super.nFactorOption)denom -= 1.0;
+0208.
+this.covarianceMatrix = this.covarianceMatrix.times(1.0/denom);
+0209.
+ 
+0210.
+// Correlation matrix
+0211.
+double[][] cov = this.covarianceMatrix.getArrayCopy();
+0212.
+double[][] corr = new double[this.nItems][this.nItems];
+0213.
+for(int i=0; i<this.nItems; i++){
+0214.
+for(int j=0; j<this.nItems; j++){
+0215.
+if(i==j){
+0216.
+corr[i][j] = 1.0;
+0217.
+}
+0218.
+else{
+0219.
+corr[i][j] = cov[i][j]/Math.sqrt(cov[i][i]*cov[j][j]);
+0220.
+}
+0221.
+}
+0222.
+}
+0223.
+this.correlationMatrix = new Matrix(corr);
+0224.
+ 
+0225.
+// Choose matrix
+0226.
+Matrix forEigen = null;
+0227.
+if(covRhoOption){
+0228.
+forEigen = this.covarianceMatrix;
+0229.
+}
+0230.
+else{
+0231.
+forEigen = this.correlationMatrix;
+0232.
+}
+0233.
+ 
+0234.
+ 
+0235.
+// Calculate eigenvalues
+0236.
+this.eigenValues = forEigen.getEigenValues();
+0237.
+ 
+0238.
+// Calculate ordered eigenvalues
+0239.
+this.orderedEigenValues = forEigen.getSortedEigenValues();
+0240.
+ 
+0241.
+// Store indices of the eigenvalues before sorting into escending order
+0242.
+this.eigenValueIndices = forEigen.eigenValueIndices();
+0243.
+ 
+0244.
+// Calculate eigenvectors
+0245.
+this.eigenVectorsAsColumns = forEigen.getEigenVectorsAsColumns();
+0246.
+this.eigenVectorsAsRows = forEigen.getEigenVectorsAsRows();
+0247.
+ 
+0248.
+// Calculate ordered eigenvectors
+0249.
+this.orderedEigenVectorsAsColumns = forEigen.getSortedEigenVectorsAsColumns();
+0250.
+this.orderedEigenVectorsAsRows = forEigen.getSortedEigenVectorsAsRows();
+0251.
+ 
+0252.
+// Express eigenvalues as percentage of total
+0253.
+ArrayMaths am = new ArrayMaths(this.orderedEigenValues);
+0254.
+double total = am.sum();
+0255.
+am = am.times(100.0/total);
+0256.
+this.proportionPercentage = am.array();
+0257.
+ 
+0258.
+// Calculate cumulative percentage
+0259.
+this.cumulativePercentage = new double[this.nItems];
+0260.
+this.cumulativePercentage[0] = this.proportionPercentage[0];
+0261.
+this.eigenValueTotal = 0.0;
+0262.
+for(int i=1; i<this.nItems; i++){
+0263.
+this.cumulativePercentage[i] = this.cumulativePercentage[i-1] + this.proportionPercentage[i];
+0264.
+this.eigenValueTotal += this.eigenValues[i];
+0265.
+}
+0266.
+ 
+0267.
+ 
+0268.
+// Calculate 'eigenvalue less than or equal to one' extraction limit
+0269.
+boolean test = true;
+0270.
+int counter = 0;
+0271.
+while(test){
+0272.
+if(this.orderedEigenValues[counter]<1.0){
+0273.
+this.greaterThanOneLimit = counter;
+0274.
+test = false;
+0275.
+}
+0276.
+else{
+0277.
+counter++;
+0278.
+if(counter==this.nItems){
+0279.
+this.greaterThanOneLimit = counter;
+0280.
+test = false;
+0281.
+}
+0282.
+}
+0283.
+}
+0284.
+ 
+0285.
+// Calculate loading factors
+0286.
+this.loadingFactorsAsColumns = new double[this.nItems][this.nItems];
+0287.
+this.loadingFactorsAsRows = new double[this.nItems][this.nItems];
+0288.
+for(int i=0; i<this.nItems; i++){
+0289.
+for(int j=0; j<this.nItems; j++){
+0290.
+this.loadingFactorsAsColumns[i][j] = this.orderedEigenVectorsAsColumns[i][j]*Math.sqrt(Math.abs(this.orderedEigenValues[j]));
+0291.
+this.loadingFactorsAsRows[i][j] = this.orderedEigenVectorsAsRows[i][j]*Math.sqrt(Math.abs(this.orderedEigenValues[i]));
+0292.
+}
+0293.
+}
+0294.
+ 
+0295.
+// Calculate communalities
+0296.
+this.communalities = new double[this.nItems];
+0297.
+for(int k=0; k<this.nItems; k++){
+0298.
+double sum = 0.0;
+0299.
+for(int j=0; j<this.nItems; j++)sum += loadingFactorsAsRows[j][k]*loadingFactorsAsRows[j][k];
+0300.
+this.communalities[k] = sum;
+0301.
+}
+0302.
+ 
+0303.
+}
+0304.
+ 
+0305.
+this.pcaDone = true;
+0306.
+ 
+0307.
+}
+0308.
+ 
+0309.
+// MonteCarlo Eigenvalues
+0310.
+public void monteCarlo(){
+0311.
+if(!pcaDone)this.pca();
+0312.
+double[] rowMeans = super.rawItemMeans();
+0313.
+double[] rowSDs = super.rawItemStandardDeviations();
+0314.
+double[][] randomData = new double[super.nItems][super.nPersons];
+0315.
+this.randomEigenValues = new double[this.nMonteCarlo][super.nItems];
+0316.
+PsRandom rr = new PsRandom();
+0317.
+for(int i=0; i<this.nMonteCarlo; i++){
+0318.
+for(int j=0; j<this.nItems; j++){
+0319.
+if(this.gaussianDeviates){
+0320.
+randomData[j] = rr.gaussianArray(rowMeans[j], rowSDs[j], super.nPersons);
+0321.
+}
+0322.
+else{
+0323.
+randomData[j] = rr.doubleArray(super.nPersons);
+0324.
+randomData[j] = Stat.scale(randomData[j], rowMeans[j], rowSDs[j]);
+0325.
+}
+0326.
+}
+0327.
+PCA pca = new PCA();
+0328.
+if(this.covRhoOption){
+0329.
+pca.useCovarianceMatrix();
+0330.
+}
+0331.
+else{
+0332.
+pca.useCorrelationMatrix();
+0333.
+}
+0334.
+pca.enterScoresAsRowPerItem(randomData);
+0335.
+this.randomEigenValues[i] = pca.orderedEigenValues();
+0336.
+ 
+0337.
+}
+0338.
+Matrix mat = new Matrix(randomEigenValues);
+0339.
+this.randomEigenValuesMeans = mat.columnMeans();
+0340.
+this.randomEigenValuesSDs = mat.columnStandardDeviations();
+0341.
+this.randomEigenValuesPercentiles = new double[this.nItems];
+0342.
+ 
+0343.
+int pIndex1 = (int)Math.ceil(this.nMonteCarlo*this.percentile/100.0);
+0344.
+int pIndex2 = pIndex1-1;
+0345.
+double factor = (this.percentile*this.nMonteCarlo/100.0 - pIndex2);
+0346.
+pIndex1--;
+0347.
+pIndex2--;
+0348.
+for(int j=0; j<this.nItems; j++){
+0349.
+double[] ordered = new double[this.nMonteCarlo];
+0350.
+for(int k=0; k<this.nMonteCarlo; k++)ordered[k] = this.randomEigenValues[k][j];
+0351.
+ArrayMaths am = new ArrayMaths(ordered);
+0352.
+am = am.sort();
+0353.
+ordered = am.array();
+0354.
+this.randomEigenValuesPercentiles[j] = ordered[pIndex2] + factor*(ordered[pIndex1] - ordered[pIndex2]);
+0355.
+}
+0356.
+ 
+0357.
+// Calculate percentile crossover extraction limit
+0358.
+boolean test = true;
+0359.
+int counter = 0;
+0360.
+while(test){
+0361.
+if(this.orderedEigenValues[counter]<=this.randomEigenValuesPercentiles[counter]){
+0362.
+this.percentileCrossover = counter;
+0363.
+test = false;
+0364.
+}
+0365.
+else{
+0366.
+counter++;
+0367.
+if(counter==this.nItems){
+0368.
+this.percentileCrossover = counter;
+0369.
+test = false;
+0370.
+}
+0371.
+}
+0372.
+}
+0373.
+ 
+0374.
+// Calculate mean crossover extraction limit
+0375.
+test = true;
+0376.
+counter = 0;
+0377.
+while(test){
+0378.
+if(this.orderedEigenValues[counter]<=this.randomEigenValuesMeans[counter]){
+0379.
+this.meanCrossover = counter;
+0380.
+test = false;
+0381.
+}
+0382.
+else{
+0383.
+counter++;
+0384.
+if(counter==this.nItems){
+0385.
+this.meanCrossover = counter;
+0386.
+test = false;
+0387.
+}
+0388.
+}
+0389.
+}
+0390.
+ 
+0391.
+this.monteCarloDone = true;
+0392.
+ 
+0393.
+}
+0394.
+ 
+0395.
+// SCREE PLOTS
+0396.
+// Scree plot of data alone
+0397.
+public void screePlotDataAlone(){
+0398.
+if(!this.pcaDone)this.pca();
+0399.
+ 
+0400.
+// Create X-axis data array
+0401.
+double[] components = new double[super.nItems];
+0402.
+for(int i=0; i<this.nItems; i++)components[i] = i+1;
+0403.
+ 
+0404.
+// Create instance of PlotGraph
+0405.
+PlotGraph pg = new PlotGraph(components, this.orderedEigenValues);
+0406.
+pg.setGraphTitle("Principal Component Analysis Scree Plot");
+0407.
+pg.setXaxisLegend("Component");
+0408.
+pg.setYaxisLegend("Eigenvalues");
+0409.
+pg.setLine(3);
+0410.
+pg.setPoint(1);
+0411.
+pg.plot();
+0412.
+}
+0413.
+ 
+0414.
+ 
+0415.
+// Scree plot eigenvalues plus plot of Monte Carlo percentiles, means and standard deviations
+0416.
+public void screePlot(){
+0417.
+if(!this.pcaDone)this.pca();
+0418.
+if(!this.monteCarloDone)this.monteCarlo();
+0419.
+ 
+0420.
+// Create plotting data array
+0421.
+double[][] plotData = new double[6][super.nItems];
+0422.
+double[] components = new double[super.nItems];
+0423.
+for(int i=0; i<this.nItems; i++)components[i] = i+1;
+0424.
+plotData[0] = components;
+0425.
+plotData[1] = this.orderedEigenValues;
+0426.
+plotData[2] = components;
+0427.
+plotData[3] = this.randomEigenValuesPercentiles;
+0428.
+plotData[4] = components;
+0429.
+plotData[5] = this.randomEigenValuesMeans;
+0430.
+ 
+0431.
+// Create instance of PlotGraph
+0432.
+PlotGraph pg = new PlotGraph(plotData);
+0433.
+pg.setErrorBars(2, this.randomEigenValuesSDs);
+0434.
+if(this.gaussianDeviates){
+0435.
+pg.setGraphTitle("Principal Component Analysis Scree Plot with Parallel Analysis using Gaussian deviates (" + nMonteCarlo + " simulations)");
+0436.
+}
+0437.
+else{
+0438.
+pg.setGraphTitle("Principal Component Analysis Scree Plot with Parallel Analysis using uniform deviates (" + nMonteCarlo + " simulations)");
+0439.
+}
+0440.
+pg.setGraphTitle2("Closed squares - data eigenvalues; open circles = Monte Carlo eigenvalue " + this.percentile + "% percentiles; error bars = standard deviations about the Monte carlo means (crosses)");
+0441.
+pg.setXaxisLegend("Component");
+0442.
+pg.setYaxisLegend("Eigenvalue");
+0443.
+int[] line = {3, 0, 3};
+0444.
+pg.setLine(line);
+0445.
+int point[] = {5, 1, 7};
+0446.
+pg.setPoint(point);
+0447.
+pg.plot();
+0448.
+}
+0449.
+ 
+0450.
+ 
+0451.
+// VARIMAX ROTATION
+0452.
+// Set varimax tolerance
+0453.
+public void setVarimaxTolerance(double tolerance){
+0454.
+this.varimaxTolerance = tolerance;
+0455.
+}
+0456.
+ 
+0457.
+// Set varimax maximum number of iterations
+0458.
+public void setVarimaxMaximumIterations(int max){
+0459.
+this.nVarimaxMax = max;
+0460.
+}
+0461.
+ 
+0462.
+// Get varimax number of iterations
+0463.
+public int getVarimaxIterations(){
+0464.
+return this.nVarimax;
+0465.
+}
+0466.
+ 
+0467.
+ 
+0468.
+// Varimax rotation: option set by default
+0469.
+public void varimaxRotation(int nFactors){
+0470.
+if(!this.pcaDone)this.pca();
+0471.
+if(this.varimaxOption){
+0472.
+this.normalVarimaxRotation(nFactors);
+0473.
+}
+0474.
+else{
+0475.
+this.rawVarimaxRotation(nFactors);
+0476.
+}
+0477.
+}
+0478.
+ 
+0479.
+// Varimax rotation: option set by default
+0480.
+// only raw option possible
+0481.
+public void varimaxRotation(double[][] loadingFactorMatrix){
+0482.
+if(this.varimaxOption)System.out.println("Method varimaxRotation: communality weights not supplied - raw varimax option used");
+0483.
+this.rawVarimaxRotationInHouse(loadingFactorMatrix);
+0484.
+}
+0485.
+ 
+0486.
+// Varimax rotation: option set by default
+0487.
+public void varimaxRotation(double[][] loadingFactorMatrix,  double[] communalityWeights){
+0488.
+if(this.varimaxOption){
+0489.
+this.normalVarimaxRotationInHouse(loadingFactorMatrix, communalityWeights);
+0490.
+}
+0491.
+else{
+0492.
+System.out.println("Method varimaxRotation: raw varimax option chosen, supplied communality weights ignored");
+0493.
+this.rawVarimaxRotationInHouse(loadingFactorMatrix);
+0494.
+}
+0495.
+}
+0496.
+ 
+0497.
+ 
+0498.
+// Raw varimax rotation
+0499.
+public void rawVarimaxRotation(int nFactors){
+0500.
+if(!this.pcaDone)this.pca();
+0501.
+double[][] loadingFactorMatrix = new double[nFactors][this.nItems];
+0502.
+for(int i = 0; i<nFactors; i++)loadingFactorMatrix[i] = this.loadingFactorsAsRows[i];
+0503.
+double[] communalityWeights = new double[this.nItems];
+0504.
+for(int i = 0; i<this.nItems; i++)communalityWeights[i] = 1.0;
+0505.
+this.normalVarimaxRotationInHouse(loadingFactorMatrix, communalityWeights);
+0506.
+}
+0507.
+ 
+0508.
+// Raw varimax rotation
+0509.
+private void rawVarimaxRotationInHouse(double[][] loadingFactorMatrix){
+0510.
+double[] communalityWeights = new double[this.nItems];
+0511.
+for(int i = 0; i<this.nItems; i++)communalityWeights[i] = 1.0;
+0512.
+this.normalVarimaxRotationInHouse(loadingFactorMatrix, communalityWeights);
+0513.
+}
+0514.
+ 
+0515.
+// Normal varimax rotation
+0516.
+public void normalVarimaxRotation(int nFactors){
+0517.
+if(!this.pcaDone)this.pca();
+0518.
+double[][] loadingFactorMatrix = new double[nFactors][this.nItems];
+0519.
+for(int i = 0; i<nFactors; i++)loadingFactorMatrix[i] = this.loadingFactorsAsRows[i];
+0520.
+double[] communalityWeights = new double[this.nItems];
+0521.
+for(int i = 0; i<nItems; i++){
+0522.
+communalityWeights[i] = 0.0;
+0523.
+for(int j = 0; j<nFactors; j++)communalityWeights[i] +=  loadingFactorMatrix[j][i]*loadingFactorMatrix[j][i];
+0524.
+}
+0525.
+this.normalVarimaxRotationInHouse(loadingFactorMatrix, communalityWeights);
+0526.
+}
+0527.
+ 
+0528.
+// Normal varimax rotation  - also used by raw varimax rotation with weights set to unity
+0529.
+private void normalVarimaxRotationInHouse(double[][] loadingFactorMatrix, double[] communalityWeights){
+0530.
+if(!this.pcaDone)this.pca();
+0531.
+int nRows = loadingFactorMatrix.length;
+0532.
+int nColumns = loadingFactorMatrix[0].length;
+0533.
+this.usRotatedLoadingFactorsAsRows = new double[nRows][nColumns];
+0534.
+this.rotatedLoadingFactorsAsRows = new double[nRows][nColumns];
+0535.
+this.usRotatedEigenValues = new double[nRows];
+0536.
+this.rotatedEigenValues = new double[nRows];
+0537.
+this.rotatedProportionPercentage= new double[nRows];
+0538.
+this.rotatedCumulativePercentage= new double[nRows];
+0539.
+ 
+0540.
+// Calculate weights and normalize the loading factors
+0541.
+for(int j = 0; j<nColumns; j++)communalityWeights[j] = Math.sqrt(communalityWeights[j]);
+0542.
+for(int i = 0; i<nRows; i++){
+0543.
+for(int j = 0; j<nColumns; j++){
+0544.
+loadingFactorMatrix[i][j] /= communalityWeights[j];
+0545.
+this.usRotatedLoadingFactorsAsRows[i][j] = loadingFactorMatrix[i][j];
+0546.
+}
+0547.
+}
+0548.
+ 
+0549.
+// Loop through pairwise rotations until varimax function maximised
+0550.
+double va = PCA.varimaxCriterion(this.usRotatedLoadingFactorsAsRows);
+0551.
+double vaLast = 0;
+0552.
+double angle = 0;
+0553.
+boolean test = true;
+0554.
+this.nVarimax = 0;
+0555.
+while(test){
+0556.
+for(int i=0; i<nRows-1; i++){
+0557.
+for(int j=i+1; j<nRows; j++){
+0558.
+angle = PCA.varimaxAngle(this.usRotatedLoadingFactorsAsRows, i, j);
+0559.
+this.usRotatedLoadingFactorsAsRows = PCA.singleRotation(this.usRotatedLoadingFactorsAsRows, i, j, angle);
+0560.
+va = PCA.varimaxCriterion(this.usRotatedLoadingFactorsAsRows);
+0561.
+}
+0562.
+}
+0563.
+if(Math.abs(va - vaLast)<this.varimaxTolerance){
+0564.
+test=false;
+0565.
+}
+0566.
+else{
+0567.
+vaLast = va;
+0568.
+this.nVarimax++;
+0569.
+if(this.nVarimax>nVarimaxMax){
+0570.
+test=false;
+0571.
+System.out.println("Method varimaxRotation: maximum iterations " + nVarimaxMax + "exceeded");
+0572.
+System.out.println("Current values returned");
+0573.
+}
+0574.
+}
+0575.
+ 
+0576.
+}
+0577.
+ 
+0578.
+// undo normalization of rotated loading factors
+0579.
+this.usRotatedLoadingFactorsAsColumns = new double[nColumns][nRows];
+0580.
+for(int i=0; i<nRows; i++){
+0581.
+for(int j=0; j<nColumns; j++){
+0582.
+this.usRotatedLoadingFactorsAsRows[i][j] *= communalityWeights[j];
+0583.
+this.usRotatedLoadingFactorsAsColumns[j][i] = this.usRotatedLoadingFactorsAsRows[i][j];
+0584.
+loadingFactorMatrix[i][j] *= communalityWeights[j];
+0585.
+}
+0586.
+}
+0587.
+ 
+0588.
+// Rotated eigenvalues
+0589.
+double usRotatedEigenValueTotal = 0.0;
+0590.
+double unRotatedEigenValueTotal = 0.0;
+0591.
+for(int i=0; i<nRows; i++){
+0592.
+this.usRotatedEigenValues[i] = 0.0;
+0593.
+for(int j=0; j<nColumns; j++){
+0594.
+this.usRotatedEigenValues[i] += this.usRotatedLoadingFactorsAsRows[i][j]*this.usRotatedLoadingFactorsAsRows[i][j];
+0595.
+}
+0596.
+usRotatedEigenValueTotal += this.usRotatedEigenValues[i];
+0597.
+unRotatedEigenValueTotal += this.orderedEigenValues[i];
+0598.
+}
+0599.
+ 
+0600.
+ 
+0601.
+// Scale rotated loading factors and eigenvalues to the unrotated variance percentage for the sum of the extracted eigenvalues
+0602.
+double scale0 = Math.abs(unRotatedEigenValueTotal/usRotatedEigenValueTotal);
+0603.
+double scale1 = Math.sqrt(scale0);
+0604.
+for(int i=0; i<nRows; i++){
+0605.
+this.rotatedEigenValues[i] = scale0*this.usRotatedEigenValues[i];
+0606.
+this.rotatedProportionPercentage[i] = this.rotatedEigenValues[i]*100.0/this.eigenValueTotal;
+0607.
+for(int j=0; j<nColumns; j++){
+0608.
+this.rotatedLoadingFactorsAsRows[i][j] = scale1*this.usRotatedLoadingFactorsAsRows[i][j];
+0609.
+}
+0610.
+}
+0611.
+this.rotatedCumulativePercentage[0] = this.rotatedProportionPercentage[0];
+0612.
+for(int i=1; i<nRows; i++)this.rotatedCumulativePercentage[i] = this.rotatedCumulativePercentage[i-1] + this.rotatedProportionPercentage[i];
+0613.
+ 
+0614.
+this.rotationDone = true;
+0615.
+ 
+0616.
+}
+0617.
+ 
+0618.
+// Raw varimax rotation
+0619.
+// Static method  - default tolerance and maximum iterations
+0620.
+public static double[][] rawVarimaxRotation(double[][] loadingFactorMatrix){
+0621.
+double tolerance = 0.0001;
+0622.
+int nIterMax = 1000;
+0623.
+return PCA.rawVarimaxRotation(loadingFactorMatrix, tolerance, nIterMax);
+0624.
+}
+0625.
+ 
+0626.
+// Raw varimax rotation
+0627.
+// Static method  - user supplied tolerance and maximum iterations
+0628.
+public static double[][] rawVarimaxRotation(double[][] loadingFactorMatrix, double tolerance, int nIterMax){
+0629.
+int nRows = loadingFactorMatrix.length;
+0630.
+int nColumns = loadingFactorMatrix[0].length;
+0631.
+double[] communalityWeights = new double[nColumns];
+0632.
+for(int i = 0; i<nColumns; i++){
+0633.
+communalityWeights[i] = 0.0;
+0634.
+for(int j = 0; j<nRows; j++)communalityWeights[i] +=  loadingFactorMatrix[j][i]*loadingFactorMatrix[j][i];
+0635.
+}
+0636.
+return PCA.normalVarimaxRotation(loadingFactorMatrix, communalityWeights, tolerance, nIterMax);
+0637.
+}
+0638.
+ 
+0639.
+// Normal varimax rotation  - also used by raw varimax rotation with weights set to unity
+0640.
+// Static method  - default tolerance and maximum iterations
+0641.
+public static double[][] normalVarimaxRotation(double[][] loadingFactorMatrix, double[] communalityWeights){
+0642.
+double tolerance = 0.0001;
+0643.
+int nIterMax = 1000;
+0644.
+return normalVarimaxRotation(loadingFactorMatrix, communalityWeights, tolerance, nIterMax);
+0645.
+}
+0646.
+ 
+0647.
+// Normal varimax rotation  - also used by raw varimax rotation with weights set to unity
+0648.
+// Static method  - tolerance and maximum iterations provided by the user
+0649.
+public static double[][] normalVarimaxRotation(double[][] loadingFactorMatrix, double[] communalityWeights, double tolerance, int nIterMax){
+0650.
+int nRows = loadingFactorMatrix.length;
+0651.
+int nColumns = loadingFactorMatrix[0].length;
+0652.
+for(int i=1; i<nRows; i++)if(loadingFactorMatrix[i].length!=nColumns)throw new IllegalArgumentException("All rows must be the same length");
+0653.
+double[][] rotatedLoadingFactorsAsRows = new double[nRows][nColumns];
+0654.
+ 
+0655.
+// Calculate weights and normalize the loading factors
+0656.
+for(int j = 0; j<nColumns; j++)communalityWeights[j] = Math.sqrt(communalityWeights[j]);
+0657.
+for(int i = 0; i<nRows; i++){
+0658.
+for(int j = 0; j<nColumns; j++){
+0659.
+loadingFactorMatrix[i][j] /= communalityWeights[j];
+0660.
+rotatedLoadingFactorsAsRows[i][j] = loadingFactorMatrix[i][j];
+0661.
+}
+0662.
+}
+0663.
+ 
+0664.
+// Loop through pairwise rotations until varimax function maximised
+0665.
+double va = PCA.varimaxCriterion(rotatedLoadingFactorsAsRows);
+0666.
+double vaLast = 0;
+0667.
+double angle = 0;
+0668.
+boolean test = true;
+0669.
+int nIter = 0;
+0670.
+while(test){
+0671.
+for(int i=0; i<nRows-1; i++){
+0672.
+for(int j=i+1; j<nRows; j++){
+0673.
+angle = PCA.varimaxAngle(rotatedLoadingFactorsAsRows, i, j);
+0674.
+rotatedLoadingFactorsAsRows = PCA.singleRotation(rotatedLoadingFactorsAsRows, i, j, angle);
+0675.
+va = PCA.varimaxCriterion(rotatedLoadingFactorsAsRows);
+0676.
+}
+0677.
+}
+0678.
+if(Math.abs(va - vaLast)<tolerance){
+0679.
+test=false;
+0680.
+}
+0681.
+else{
+0682.
+vaLast = va;
+0683.
+nIter++;
+0684.
+if(nIter>nIterMax){
+0685.
+test=false;
+0686.
+System.out.println("Method varimaxRotation: maximum iterations " + nIterMax + "exceeded");
+0687.
+System.out.println("Current values returned");
+0688.
+}
+0689.
+}
+0690.
+}
+0691.
+ 
+0692.
+// undo normalization of loading factors
+0693.
+for(int i=0; i<nRows; i++){
+0694.
+for(int j=0; j<nColumns; j++){
+0695.
+rotatedLoadingFactorsAsRows[i][j] *= communalityWeights[j];
+0696.
+loadingFactorMatrix[i][j] *= communalityWeights[j];
+0697.
+}
+0698.
+}
+0699.
+ 
+0700.
+return rotatedLoadingFactorsAsRows;
+0701.
+}
+0702.
+ 
+0703.
+// Transpose a matrix (as a possible aide to the use of the static methods)
+0704.
+public static double[][] transposeMatrix(double[][] matrix){
+0705.
+int nRows = matrix.length;
+0706.
+int nColumns = matrix[0].length;
+0707.
+for(int i=1; i<nRows; i++)if(matrix[i].length!=nColumns)throw new IllegalArgumentException("All rows must be the same length");
+0708.
+double[][] transpose = new double[nColumns][nRows];
+0709.
+for(int i=0; i<nRows; i++){
+0710.
+for(int j=0; j<nColumns; j++){
+0711.
+transpose[j][i] = matrix[i][j];
+0712.
+}
+0713.
+}
+0714.
+return transpose;
+0715.
+}
+0716.
+ 
+0717.
+// Varimax criterion calculation
+0718.
+public static double varimaxCriterion(double[][] loadingFactorMatrix){
+0719.
+int nRows = loadingFactorMatrix.length;
+0720.
+int nColumns = loadingFactorMatrix[0].length;
+0721.
+double va1 = 0.0;
+0722.
+double va2 = 0.0;
+0723.
+double va3 = 0.0;
+0724.
+for(int j=0; j<nRows; j++){
+0725.
+double sum1 = 0.0;
+0726.
+for(int k=0; k<nColumns; k++)sum1 += Math.pow(loadingFactorMatrix[j][k], 4);
+0727.
+va1 += sum1;
+0728.
+}
+0729.
+va1 *= nColumns;
+0730.
+for(int j=0; j<nRows; j++){
+0731.
+double sum2 = 0.0;
+0732.
+for(int k=0; k<nColumns; k++)sum2 += Math.pow(loadingFactorMatrix[j][k], 2);
+0733.
+va2 += sum2*sum2;
+0734.
+}
+0735.
+va3 = va1 - va2;
+0736.
+return va3;
+0737.
+}
+0738.
+ 
+0739.
+// Varimax rotation angle calculation
+0740.
+// Kaiset maximization procedure
+0741.
+public static double varimaxAngle(double[][] loadingFactorMatrix, int k, int l){
+0742.
+int nColumns = loadingFactorMatrix[0].length;
+0743.
+double uTerm = 0.0;
+0744.
+double vTerm = 0.0;
+0745.
+double bigA = 0.0;
+0746.
+double bigB = 0.0;
+0747.
+double bigC = 0.0;
+0748.
+double bigD = 0.0;
+0749.
+ 
+0750.
+for(int j=0; j<nColumns; j++){
+0751.
+double lmjk = loadingFactorMatrix[k][j];
+0752.
+double lmjl = loadingFactorMatrix[l][j];
+0753.
+uTerm = lmjk*lmjk - lmjl*lmjl;
+0754.
+vTerm = 2.0*lmjk*lmjl;
+0755.
+bigA += uTerm;
+0756.
+bigB += vTerm;
+0757.
+bigC += uTerm*uTerm - vTerm*vTerm;
+0758.
+bigD += 2.0*uTerm*vTerm;
+0759.
+}
+0760.
+double bigE = bigD - 2.0*bigA*bigB/nColumns;
+0761.
+double bigF = bigC - (bigA*bigA - bigB*bigB)/nColumns;
+0762.
+double angle = 0.25*Math.atan2(bigE, bigF);
+0763.
+return angle;
+0764.
+}
+0765.
+ 
+0766.
+// Single rotation
+0767.
+public static double[][] singleRotation(double[][] loadingFactorMatrix, int k, int l, double angle){
+0768.
+int nRows = loadingFactorMatrix.length;
+0769.
+int nColumns = loadingFactorMatrix[0].length;
+0770.
+double[][] rotatedMatrix = new double[nRows][nColumns];
+0771.
+for(int i=0; i<nRows; i++){
+0772.
+for(int j=0; j<nColumns; j++){
+0773.
+rotatedMatrix[i][j] = loadingFactorMatrix[i][j];
+0774.
+}
+0775.
+}
+0776.
+ 
+0777.
+double sinphi = Math.sin(angle);
+0778.
+double cosphi = Math.cos(angle);
+0779.
+for(int j=0; j<nColumns; j++){
+0780.
+rotatedMatrix[k][j] = loadingFactorMatrix[k][j]*cosphi + loadingFactorMatrix[l][j]*sinphi;
+0781.
+rotatedMatrix[l][j] = -loadingFactorMatrix[k][j]*sinphi + loadingFactorMatrix[l][j]*cosphi;
+0782.
+}
+0783.
+return rotatedMatrix;
+0784.
+}
+0785.
+ 
+0786.
+ 
+0787.
+// RETURN DATA
+0788.
+ 
+0789.
+// Return eigenvalues as calculated
+0790.
+public double[] eigenValues(){
+0791.
+if(!this.pcaDone)this.pca();
+0792.
+return this.eigenValues;
+0793.
+}
+0794.
+ 
+0795.
+// Return eigenvalues ordered into a descending order
+0796.
+public double[] orderedEigenValues(){
+0797.
+if(!this.pcaDone)this.pca();
+0798.
+return this.orderedEigenValues;
+0799.
+}
+0800.
+ 
+0801.
+// Return indices of the eigenvalues before ordering into a descending order
+0802.
+public int[] eigenValueIndices(){
+0803.
+if(!this.pcaDone)this.pca();
+0804.
+return this.eigenValueIndices;
+0805.
+}
+0806.
+ 
+0807.
+// Return sum of the eigenvalues
+0808.
+public double eigenValueTotal(){
+0809.
+if(!this.pcaDone)this.pca();
+0810.
+return this.eigenValueTotal;
+0811.
+}
+0812.
+ 
+0813.
+ 
+0814.
+// Return eigenvalues ordered into a descending order and expressed as a percentage of total
+0815.
+public double[] proportionPercentage(){
+0816.
+if(!this.pcaDone)this.pca();
+0817.
+return this.proportionPercentage;
+0818.
+}
+0819.
+ 
+0820.
+// Return cumulative values of the eigenvalues ordered into a descending order and expressed as a percentage of total
+0821.
+public double[] cumulativePercentage(){
+0822.
+if(!this.pcaDone)this.pca();
+0823.
+return this.cumulativePercentage;
+0824.
+}
+0825.
+ 
+0826.
+// Return scaled rotated eigenvalues
+0827.
+public double[] rotatedEigenValues(){
+0828.
+if(!this.rotationDone)throw new IllegalArgumentException("No rotation has been performed");
+0829.
+return this.rotatedEigenValues;
+0830.
+}
+0831.
+ 
+0832.
+// Return scaled rotated eigenvalues as proportion of total variance
+0833.
+public double[] rotatedProportionPercentage(){
+0834.
+if(!this.rotationDone)throw new IllegalArgumentException("No rotation has been performed");
+0835.
+return this.rotatedProportionPercentage;
+0836.
+}
+0837.
+ 
+0838.
+// Return scaled rotated eigenvalues as cumulative percentages
+0839.
+public double[] rotatedCumulativePercentage(){
+0840.
+if(!this.rotationDone)throw new IllegalArgumentException("No rotation has been performed");
+0841.
+return this.rotatedCumulativePercentage;
+0842.
+}
+0843.
+ 
+0844.
+ 
+0845.
+ 
+0846.
+// Return eigenvectors as calculated
+0847.
+// Each column is the eigenvector for an eigenvalue
+0848.
+public double[][] eigenVectors(){
+0849.
+if(!this.pcaDone)this.pca();
+0850.
+return this.eigenVectorsAsColumns;
+0851.
+}
+0852.
+ 
+0853.
+// Return eigenvectors as calculated
+0854.
+// Each row is the eigenvector for an eigenvalue
+0855.
+public double[][] eigenVectorsAsRows(){
+0856.
+if(!this.pcaDone)this.pca();
+0857.
+return this.eigenVectorsAsRows;
+0858.
+}
+0859.
+ 
+0860.
+// Return eigenvector ordered to match the eigenvalues sorted into a descending order
+0861.
+// Each column is the eigenvector for an eigenvalue
+0862.
+public double[][] orderedEigenVectorsAsColumns(){
+0863.
+if(!this.pcaDone)this.pca();
+0864.
+return this.orderedEigenVectorsAsColumns;
+0865.
+}
+0866.
+ 
+0867.
+// Return eigenvector ordered to match the eigenvalues sorted into a descending order
+0868.
+// Each column is the eigenvector for an eigenvalue
+0869.
+public double[][] orderedEigenVectors(){
+0870.
+if(!this.pcaDone)this.pca();
+0871.
+return this.orderedEigenVectorsAsColumns;
+0872.
+}
+0873.
+ 
+0874.
+// Return eigenvector ordered to match the eigenvalues sorted into a descending order
+0875.
+// Each rowis the eigenvector for an eigenvalue
+0876.
+public double[][] orderedEigenVectorsAsRows(){
+0877.
+if(!this.pcaDone)this.pca();
+0878.
+return this.orderedEigenVectorsAsRows;
+0879.
+}
+0880.
+ 
+0881.
+// Return loading factors ordered to match the eigenvalues sorted into a descending order
+0882.
+// Each column is the loading factors for an eigenvalue
+0883.
+public double[][] loadingFactorsAsColumns(){
+0884.
+if(!this.pcaDone)this.pca();
+0885.
+return this.loadingFactorsAsColumns;
+0886.
+}
+0887.
+ 
+0888.
+// Return loading factors ordered to match the eigenvalues sorted into a descending order
+0889.
+// Each row is the loading factors for an eigenvalue
+0890.
+public double[][] loadingFactorsAsRows(){
+0891.
+if(!this.pcaDone)this.pca();
+0892.
+return this.loadingFactorsAsRows;
+0893.
+}
+0894.
+ 
+0895.
+// Return rotated loading factors as columns
+0896.
+public double[][] rotatedLoadingFactorsAsColumns(){
+0897.
+if(!this.rotationDone)throw new IllegalArgumentException("No rotation has been performed");
+0898.
+return this.rotatedLoadingFactorsAsColumns;
+0899.
+}
+0900.
+ 
+0901.
+// Return rotated loading factors as rows
+0902.
+public double[][] rotatedLoadingFactorsAsRows(){
+0903.
+if(!this.rotationDone)throw new IllegalArgumentException("No rotation has been performed");
+0904.
+return this.rotatedLoadingFactorsAsRows;
+0905.
+}
+0906.
+ 
+0907.
+// Return communalities
+0908.
+public double[] communalities(){
+0909.
+if(!this.pcaDone)this.pca();
+0910.
+return this.communalities;
+0911.
+}
+0912.
+ 
+0913.
+ 
+0914.
+// Return covariance matrix
+0915.
+public Matrix covarianceMatrix(){
+0916.
+if(!this.pcaDone)this.pca();
+0917.
+return this.covarianceMatrix;
+0918.
+}
+0919.
+ 
+0920.
+// Return correlation matrix
+0921.
+public Matrix correlationMatrix(){
+0922.
+if(!this.pcaDone)this.pca();
+0923.
+return this.correlationMatrix;
+0924.
+}
+0925.
+ 
+0926.
+// Return Monte Carlo means
+0927.
+public double[] monteCarloMeans(){
+0928.
+if(!this.monteCarloDone)this.monteCarlo();
+0929.
+return this.randomEigenValuesMeans;
+0930.
+}
+0931.
+ 
+0932.
+// Return Monte Carlo standard deviations
+0933.
+public double[] monteCarloStandardDeviations(){
+0934.
+if(!this.monteCarloDone)this.monteCarlo();
+0935.
+return this.randomEigenValuesSDs;
+0936.
+}
+0937.
+ 
+0938.
+// Return Monte Carlo percentiles
+0939.
+public double[] monteCarloPercentiles(){
+0940.
+if(!this.monteCarloDone)this.monteCarlo();
+0941.
+return this.randomEigenValuesPercentiles;
+0942.
+}
+0943.
+ 
+0944.
+// Return Monte Carlo eigenvalue matrix
+0945.
+public double[][] monteCarloEigenValues(){
+0946.
+if(!this.monteCarloDone)this.monteCarlo();
+0947.
+return this.randomEigenValues;
+0948.
+}
+0949.
+ 
+0950.
+// Return original data matrix
+0951.
+public Matrix originalData(){
+0952.
+if(!this.pcaDone)this.pca();
+0953.
+return this.data;
+0954.
+}
+0955.
+ 
+0956.
+// Return data minus row means divided by n-1 or n
+0957.
+public Matrix xMatrix(){
+0958.
+if(!this.pcaDone)this.pca();
+0959.
+double denom = this.nItems;
+0960.
+if(!super.nFactorOption)denom -= 1.0;
+0961.
+Matrix mat = dataMinusMeans.times(1.0/Math.sqrt(denom));
+0962.
+return mat;
+0963.
+}
+0964.
+ 
+0965.
+// Return transpose of data minus row means divided by n-1 or n
+0966.
+public Matrix xMatrixTranspose(){
+0967.
+if(!this.pcaDone)this.pca();
+0968.
+double denom = this.nItems;
+0969.
+if(!super.nFactorOption)denom -= 1.0;
+0970.
+Matrix mat = dataMinusMeansTranspose.times(1.0/Math.sqrt(denom));
+0971.
+return mat;
+0972.
+}
+0973.
+ 
+0974.
+// Return number of extracted components with eigenvalues greater than or equal to one
+0975.
+public int nEigenOneOrGreater(){
+0976.
+if(!this.pcaDone)this.pca();
+0977.
+return this.greaterThanOneLimit;
+0978.
+}
+0979.
+ 
+0980.
+// Return number of extracted components with eigenvalues greater than the corresponding Monte Carlo mean
+0981.
+public int nMeanCrossover(){
+0982.
+if(!this.monteCarloDone)this.monteCarlo();
+0983.
+return this.meanCrossover;
+0984.
+}
+0985.
+ 
+0986.
+// Return number of extracted components with eigenvalues greater than the corresponding Monte Carlo percentile
+0987.
+public int nPercentileCrossover(){
+0988.
+if(!this.monteCarloDone)this.monteCarlo();
+0989.
+return this.percentileCrossover;
+0990.
+}
+0991.
+ 
+0992.
+// OUTPUT THE ANALYSIS
+0993.
+ 
+0994.
+// Full analysis without output of input data
+0995.
+// no input file name entered via method argument list
+0996.
+public void analysis(){
+0997.
+ 
+0998.
+ 
+0999.
+this.outputFilename = "PCAOutput";
+1000.
+if(this.fileOption==1){
+1001.
+this.outputFilename += ".txt";
+1002.
+}
+1003.
+else{
+1004.
+this.outputFilename += ".xls";
+1005.
+}
+1006.
+String message1 = "Output file name for the analysis details:";
+1007.
+String message2 = "\nEnter the required name (as a single word) and click OK ";
+1008.
+String message3 = "\nor simply click OK for default value";
+1009.
+String message = message1 + message2 + message3;
+1010.
+String defaultName = this.outputFilename;
+1011.
+this.outputFilename = Db.readLine(message, defaultName);
+1012.
+this.analysis(this.outputFilename);
+1013.
+}
+1014.
+ 
+1015.
+// Full analysis without output of input data
+1016.
+// input file name via method argument list
+1017.
+public void analysis(String filename){
+1018.
+ 
+1019.
+// Scree Plot
+1020.
+this.screePlot();
+1021.
+ 
+1022.
+// Open output file
+1023.
+this.outputFilename = filename;
+1024.
+String outputFilenameWithoutExtension = null;
+1025.
+String extension = null;
+1026.
+int pos = filename.indexOf('.');
+1027.
+if(pos==-1){
+1028.
+outputFilenameWithoutExtension = filename;
+1029.
+if(this.fileOption==1){
+1030.
+this.outputFilename += ".txt";
+1031.
+}
+1032.
+else{
+1033.
+this.outputFilename += ".xls";
+1034.
+}
+1035.
+}
+1036.
+else{
+1037.
+extension = (filename.substring(pos)).trim();
+1038.
+ 
+1039.
+outputFilenameWithoutExtension = (filename.substring(0, pos)).trim();
+1040.
+if(extension.equalsIgnoreCase(".xls")){
+1041.
+if(this.fileOption==1){
+1042.
+if(this.fileOptionSet){
+1043.
+String message1 = "Your entered output file type is .xls";
+1044.
+String message2 = "\nbut you have chosen a .txt output";
+1045.
+String message = message1 + message2;
+1046.
+String headerComment = "Your output file name extension";
+1047.
+String[] comments = {message, "replace it with .txt [text file]"};
+1048.
+String[] boxTitles = {"Retain", ".txt"};
+1049.
+int defaultBox = 1;
+1050.
+int opt =  Db.optionBox(headerComment, comments, boxTitles, defaultBox);
+1051.
+if(opt==2)this.outputFilename = outputFilenameWithoutExtension + ".txt";
+1052.
+}
+1053.
+else{
+1054.
+this.fileOption=2;
+1055.
+}
+1056.
+}
+1057.
+}
+1058.
+ 
+1059.
+if(extension.equalsIgnoreCase(".txt")){
+1060.
+if(this.fileOption==2){
+1061.
+if(this.fileOptionSet){
+1062.
+String message1 = "Your entered output file type is .txt";
+1063.
+String message2 = "\nbut you have chosen a .xls output";
+1064.
+String message = message1 + message2;
+1065.
+String headerComment = "Your output file name extension";
+1066.
+String[] comments = {message, "replace it with .xls [Excel file]"};
+1067.
+String[] boxTitles = {"Retain", ".xls"};
+1068.
+int defaultBox = 1;
+1069.
+int opt =  Db.optionBox(headerComment, comments, boxTitles, defaultBox);
+1070.
+if(opt==2)this.outputFilename = outputFilenameWithoutExtension + ".xls";
+1071.
+}
+1072.
+else{
+1073.
+this.fileOption=1;
+1074.
+}
+1075.
+}
+1076.
+}
+1077.
+ 
+1078.
+if(!extension.equalsIgnoreCase(".txt") && !extension.equalsIgnoreCase(".xls")){
+1079.
+String message1 = "Your extension is " + extension;
+1080.
+String message2 = "\n    Do you wish to retain it:";
+1081.
+String message = message1 + message2;
+1082.
+String headerComment = "Your output file name extension";
+1083.
+String[] comments = {message, "replace it with .txt [text file]", "replace it with .xls [MS Excel file]"};
+1084.
+String[] boxTitles = {"Retain", ".txt", ".xls"};
+1085.
+int defaultBox = 1;
+1086.
+int opt =  Db.optionBox(headerComment, comments, boxTitles, defaultBox);
+1087.
+switch(opt){
+1088.
+case 1: this.fileOption=1;
+1089.
+break;
+1090.
+case 2: this.outputFilename = outputFilenameWithoutExtension + ".txt";
+1091.
+this.fileOption=1;
+1092.
+break;
+1093.
+case 3: this.outputFilename = outputFilenameWithoutExtension + ".xls";
+1094.
+this.fileOption=2;
+1095.
+break;
+1096.
+}
+1097.
+}
+1098.
+}
+1099.
+ 
+1100.
+if(this.fileOption==1){
+1101.
+this.analysisText();
+1102.
+}
+1103.
+else{
+1104.
+this.analysisExcel();
+1105.
+}
+1106.
+ 
+1107.
+System.out.println("The analysis has been written to the file " + this.outputFilename);
+1108.
+}
+1109.
+ 
+1110.
+// Output analysis to a text (.txt) file
+1111.
+private void analysisText(){
+1112.
+ 
+1113.
+FileOutput fout = null;
+1114.
+if(this.fileNumberingSet){
+1115.
+fout = new FileOutput(this.outputFilename, 'n');
+1116.
+}
+1117.
+else{
+1118.
+fout = new FileOutput(this.outputFilename);
+1119.
+}
+1120.
+ 
+1121.
+// perform PCA if not already performed
+1122.
+if(!pcaDone)this.pca();
+1123.
+if(!this.monteCarloDone)this.monteCarlo();
+1124.
+ 
+1125.
+// output title
+1126.
+fout.println("PRINCIPAL COMPONENT ANALYSIS");
+1127.
+fout.println("Program: PCA - Analysis Output");
+1128.
+for(int i=0; i<this.titleLines; i++)fout.println(title[i]);
+1129.
+Date d = new Date();
+1130.
+String day = DateFormat.getDateInstance().format(d);
+1131.
+String tim = DateFormat.getTimeInstance().format(d);
+1132.
+fout.println("Program executed at " + tim + " on " + day);
+1133.
+fout.println();
+1134.
+if(this.covRhoOption){
+1135.
+fout.println("Covariance matrix used");
+1136.
+}
+1137.
+else{
+1138.
+fout.println("Correlation matrix used");
+1139.
+}
+1140.
+fout.println();
+1141.
+ 
+1142.
+// output eigenvalue table
+1143.
+// field width
+1144.
+int field1 = 10;
+1145.
+int field2 = 12;
+1146.
+int field3 = 2;
+1147.
+ 
+1148.
+fout.println("ALL EIGENVALUES");
+1149.
+ 
+1150.
+fout.print("Component ", field1);
+1151.
+fout.print("Unordered ", field1);
+1152.
+fout.print("Eigenvalue ", field2);
+1153.
+fout.print("Proportion ", field2);
+1154.
+fout.print("Cumulative ", field2);
+1155.
+fout.println("Difference ");
+1156.
+ 
+1157.
+fout.print(" ", field1);
+1158.
+fout.print("index", field1);
+1159.
+fout.print(" ", field2);
+1160.
+fout.print("as % ", field2);
+1161.
+fout.print("percentage ", field2);
+1162.
+fout.println(" ");
+1163.
+ 
+1164.
+ 
+1165.
+ 
+1166.
+for(int i=0; i<this.nItems; i++){
+1167.
+fout.print(i+1, field1);
+1168.
+fout.print((this.eigenValueIndices[i]+1), field1);
+1169.
+fout.print(Fmath.truncate(this.orderedEigenValues[i], this.trunc), field2);
+1170.
+fout.print(Fmath.truncate(this.proportionPercentage[i], this.trunc), field2);
+1171.
+fout.print(Fmath.truncate(this.cumulativePercentage[i], this.trunc), field2);
+1172.
+if(i<this.nItems-1){
+1173.
+fout.print(Fmath.truncate((this.orderedEigenValues[i] - this.orderedEigenValues[i+1]), this.trunc), field2);
+1174.
+}
+1175.
+else{
+1176.
+fout.print(" ", field2);
+1177.
+}
+1178.
+fout.print(" ", field3);
+1179.
+ 
+1180.
+fout.println();
+1181.
+}
+1182.
+fout.println();
+1183.
+ 
+1184.
+ 
+1185.
+// Extracted components
+1186.
+int nMax = this.greaterThanOneLimit;
+1187.
+if(nMax<this.meanCrossover)nMax=this.meanCrossover;
+1188.
+if(nMax<this.percentileCrossover)nMax=this.percentileCrossover;
+1189.
+fout.println("EXTRACTED EIGENVALUES");
+1190.
+fout.print(" ", field1);
+1191.
+fout.print("Greater than unity", 3*field2 + field3);
+1192.
+fout.print("Greater than Monte Carlo Mean ", 3*field2 + field3);
+1193.
+fout.println("Greater than Monte Carlo Percentile");
+1194.
+ 
+1195.
+fout.print("Component ", field1);
+1196.
+fout.print("Eigenvalue ", field2);
+1197.
+fout.print("Proportion ", field2);
+1198.
+fout.print("Cumulative ", field2);
+1199.
+fout.print(" ", field3);
+1200.
+ 
+1201.
+fout.print("Eigenvalue ", field2);
+1202.
+fout.print("Proportion ", field2);
+1203.
+fout.print("Cumulative ", field2);
+1204.
+fout.print(" ", field3);
+1205.
+ 
+1206.
+fout.print("Eigenvalue ", field2);
+1207.
+fout.print("Proportion ", field2);
+1208.
+fout.print("Cumulative ", field2);
+1209.
+fout.println(" ");
+1210.
+ 
+1211.
+fout.print(" ", field1);
+1212.
+fout.print(" ", field2);
+1213.
+fout.print("as % ", field2);
+1214.
+fout.print("percentage ", field2);
+1215.
+fout.print(" ", field3);
+1216.
+ 
+1217.
+fout.print(" ", field2);
+1218.
+fout.print("as % ", field2);
+1219.
+fout.print("percentage ", field2);
+1220.
+fout.print(" ", field3);
+1221.
+ 
+1222.
+fout.print(" ", field2);
+1223.
+fout.print("as % ", field2);
+1224.
+fout.print("percentage ", field2);
+1225.
+fout.println(" ");
+1226.
+ 
+1227.
+int ii=0;
+1228.
+while(ii<nMax){
+1229.
+fout.print(ii+1, field1);
+1230.
+ 
+1231.
+if(ii<this.greaterThanOneLimit){
+1232.
+fout.print(Fmath.truncate(this.orderedEigenValues[ii], this.trunc), field2);
+1233.
+fout.print(Fmath.truncate(this.proportionPercentage[ii], this.trunc), field2);
+1234.
+fout.print(Fmath.truncate(this.cumulativePercentage[ii], this.trunc), (field2+field3));
+1235.
+}
+1236.
+ 
+1237.
+if(ii<this.meanCrossover){
+1238.
+fout.print(Fmath.truncate(this.orderedEigenValues[ii], this.trunc), field2);
+1239.
+fout.print(Fmath.truncate(this.proportionPercentage[ii], this.trunc), field2);
+1240.
+fout.print(Fmath.truncate(this.cumulativePercentage[ii], this.trunc), (field2+field3));
+1241.
+}
+1242.
+ 
+1243.
+if(ii<this.percentileCrossover){
+1244.
+fout.print(Fmath.truncate(this.orderedEigenValues[ii], this.trunc), field2);
+1245.
+fout.print(Fmath.truncate(this.proportionPercentage[ii], this.trunc), field2);
+1246.
+fout.print(Fmath.truncate(this.cumulativePercentage[ii], this.trunc));
+1247.
+}
+1248.
+fout.println();
+1249.
+ii++;
+1250.
+}
+1251.
+fout.println();
+1252.
+ 
+1253.
+ 
+1254.
+fout.println("PARALLEL ANALYSIS");
+1255.
+fout.println("Number of simulations = " + this.nMonteCarlo);
+1256.
+if(this.gaussianDeviates){
+1257.
+fout.println("Gaussian random deviates used");
+1258.
+}
+1259.
+else{
+1260.
+fout.println("Uniform random deviates used");
+1261.
+}
+1262.
+fout.println("Percentile value used = " + this.percentile + " %");
+1263.
+ 
+1264.
+fout.println();
+1265.
+fout.print("Component ", field1);
+1266.
+fout.print("Data ", field2);
+1267.
+fout.print("Proportion ", field2);
+1268.
+fout.print("Cumulative ", field2);
+1269.
+fout.print(" ", field3);
+1270.
+fout.print("Data ", field2);
+1271.
+fout.print("Monte Carlo ", field2);
+1272.
+fout.print("Monte Carlo ", field2);
+1273.
+fout.println("Monte Carlo ");
+1274.
+ 
+1275.
+fout.print(" ", field1);
+1276.
+fout.print("Eigenvalue ", field2);
+1277.
+fout.print("as % ", field2);
+1278.
+fout.print("percentage ", field2);
+1279.
+fout.print(" ", field3);
+1280.
+fout.print("Eigenvalue ", field2);
+1281.
+fout.print("Eigenvalue ", field2);
+1282.
+fout.print("Eigenvalue ", field2);
+1283.
+fout.println("Eigenvalue ");
+1284.
+ 
+1285.
+fout.print(" ", field1);
+1286.
+fout.print(" ", field2);
+1287.
+fout.print(" ", field2);
+1288.
+fout.print(" ", field2);
+1289.
+fout.print(" ", field3);
+1290.
+fout.print(" ", field2);
+1291.
+fout.print("Percentile ", field2);
+1292.
+fout.print("Mean ", field2);
+1293.
+fout.println("Standard Deviation ");
+1294.
+ 
+1295.
+for(int i=0; i<this.nItems; i++){
+1296.
+fout.print(i+1, field1);
+1297.
+fout.print(Fmath.truncate(this.orderedEigenValues[i], this.trunc), field2);
+1298.
+fout.print(Fmath.truncate(this.proportionPercentage[i], this.trunc), field2);
+1299.
+fout.print(Fmath.truncate(this.cumulativePercentage[i], this.trunc), field2);
+1300.
+fout.print(" ", field3);
+1301.
+fout.print(Fmath.truncate(this.orderedEigenValues[i], this.trunc), field2);
+1302.
+fout.print(Fmath.truncate(this.randomEigenValuesPercentiles[i], this.trunc), field2);
+1303.
+fout.print(Fmath.truncate(this.randomEigenValuesMeans[i], this.trunc), field2);
+1304.
+fout.println(Fmath.truncate(this.randomEigenValuesSDs[i], this.trunc));
+1305.
+}
+1306.
+fout.println();
+1307.
+ 
+1308.
+// Correlation Matrix
+1309.
+fout.println("CORRELATION MATRIX");
+1310.
+fout.println("Original component indices in parenthesis");
+1311.
+fout.println();
+1312.
+fout.print(" ", field1);
+1313.
+fout.print("component", field1);
+1314.
+for(int i=0; i<this.nItems; i++)fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", field2);
+1315.
+fout.println();
+1316.
+fout.println("component");
+1317.
+for(int i=0; i<this.nItems; i++){
+1318.
+fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", 2*field1);
+1319.
+for(int j=0; j<this.nItems; j++)fout.print(Fmath.truncate(this.correlationMatrix.getElement(j,i), this.trunc), field2);
+1320.
+fout.println();
+1321.
+}
+1322.
+fout.println();
+1323.
+ 
+1324.
+// Covariance Matrix
+1325.
+fout.println("COVARIANCE MATRIX");
+1326.
+fout.println("Original component indices in parenthesis");
+1327.
+fout.println();
+1328.
+fout.print(" ", field1);
+1329.
+fout.print("component", field1);
+1330.
+for(int i=0; i<this.nItems; i++)fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", field2);
+1331.
+fout.println();
+1332.
+fout.println("component");
+1333.
+for(int i=0; i<this.nItems; i++){
+1334.
+fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", 2*field1);
+1335.
+for(int j=0; j<this.nItems; j++)fout.print(Fmath.truncate(this.covarianceMatrix.getElement(j,i), this.trunc), field2);
+1336.
+fout.println();
+1337.
+}
+1338.
+ 
+1339.
+fout.println();
+1340.
+ 
+1341.
+// Eigenvectors
+1342.
+fout.println("EIGENVECTORS");
+1343.
+fout.println("Original component indices in parenthesis");
+1344.
+fout.println("Vector corresponding to an ordered eigenvalues in each row");
+1345.
+fout.println();
+1346.
+fout.print(" ", field1);
+1347.
+fout.print("component", field1);
+1348.
+for(int i=0; i<this.nItems; i++)fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", field2);
+1349.
+fout.println();
+1350.
+fout.println("component");
+1351.
+for(int i=0; i<this.nItems; i++){
+1352.
+fout.print((i+1) + " (" + (this.eigenValueIndices[i]+1) + ")", 2*field1);
+1353.
+for(int j=0; j<this.nItems; j++)fout.print(Fmath.truncate(this.orderedEigenVectorsAsRows[i][j], this.trunc), field2);
+1354.
+fout.println();
+1355.
+}
+1356.
+fout.println();
+1357.
+ 
+1358.
+// Loading factors
+1359.
+fout.println("LOADING FACTORS");
+1360.
+fout.println("Original  indices in parenthesis");
+1361.
+fout.println("Loading factors corresponding to an ordered eigenvalues in each row");
+1362.
+fout.println();
+1363.
+fout.print(" ", field1);
+1364.
+fout.print("component", field1);
+1365.
+for(int i=0; i<this.nItems; i++)fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", field2);
+1366.
+fout.print(" ", field1);
+1367.
+fout.print("Eigenvalue", field2);
+1368.
+fout.print("Proportion", field2);
+1369.
+fout.println("Cumulative %");
+1370.
+fout.println("factor");
+1371.
+for(int i=0; i<this.nItems; i++){
+1372.
+fout.print((i+1) + " (" + (this.eigenValueIndices[i]+1) + ")", 2*field1);
+1373.
+for(int j=0; j<this.nItems; j++)fout.print(Fmath.truncate(this.loadingFactorsAsRows[i][j], this.trunc), field2);
+1374.
+fout.print(" ", field1);
+1375.
+fout.print(Fmath.truncate(this.orderedEigenValues[i], this.trunc), field2);
+1376.
+fout.print(Fmath.truncate(proportionPercentage[i], this.trunc), field2);
+1377.
+fout.println(Fmath.truncate(cumulativePercentage[i], this.trunc));
+1378.
+}
+1379.
+fout.println();
+1380.
+ 
+1381.
+// Rotated loading factors
+1382.
+fout.println("ROTATED LOADING FACTORS");
+1383.
+if(this.varimaxOption){
+1384.
+fout.println("NORMAL VARIMAX");
+1385.
+}
+1386.
+else{
+1387.
+fout.println("RAW VARIMAX");
+1388.
+}
+1389.
+ 
+1390.
+String message = "The ordered eigenvalues with Monte Carlo means and percentiles in parenthesis";
+1391.
+message += "\n (Total number of eigenvalues = " + this.nItems + ")";
+1392.
+int nDisplay = this.nItems;
+1393.
+Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+1394.
+int screenHeight = screenSize.height;
+1395.
+int nDisplayLimit = 20*screenHeight/800;
+1396.
+if(nDisplay>nDisplay)nDisplay = nDisplayLimit;
+1397.
+for(int i=0; i<nDisplay; i++){
+1398.
+message += "\n " + Fmath.truncate(this.orderedEigenValues[i], 4) + " (" + Fmath.truncate(this.randomEigenValuesMeans[i], 4) + "  " + Fmath.truncate(this.randomEigenValuesPercentiles[i], 4) + ")";
+1399.
+}
+1400.
+if(nDisplay<this.nItems)message += "\n . . . ";
+1401.
+message += "\nEnter number of eigenvalues to be extracted";
+1402.
+int nExtracted = this.greaterThanOneLimit;
+1403.
+nExtracted = Db.readInt(message, nExtracted);
+1404.
+this.varimaxRotation(nExtracted);
+1405.
+ 
+1406.
+fout.println("Varimax rotation for " + nExtracted + " extracted factors");
+1407.
+fout.println("Rotated loading factors and eigenvalues scaled to ensure total 'rotated variance' matches unrotated variance for the extracted factors");
+1408.
+fout.println("Original  indices in parenthesis");
+1409.
+fout.println();
+1410.
+fout.print(" ", field1);
+1411.
+fout.print("component", field1);
+1412.
+for(int i=0; i<this.nItems; i++)fout.print((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")", field2);
+1413.
+fout.print(" ", field1);
+1414.
+fout.print("Eigenvalue", field2);
+1415.
+fout.print("Proportion", field2);
+1416.
+fout.println("Cumulative %");
+1417.
+fout.println("factor");
+1418.
+ 
+1419.
+for(int i=0; i<nExtracted; i++){
+1420.
+fout.print((i+1) + " (" + (this.eigenValueIndices[i]+1) + ")", 2*field1);
+1421.
+for(int j=0; j<this.nItems; j++)fout.print(Fmath.truncate(this.rotatedLoadingFactorsAsRows[i][j], this.trunc), field2);
+1422.
+fout.print(" ", field1);
+1423.
+fout.print(Fmath.truncate(rotatedEigenValues[i], this.trunc), field2);
+1424.
+fout.print(Fmath.truncate(rotatedProportionPercentage[i], this.trunc), field2);
+1425.
+fout.println(Fmath.truncate(rotatedCumulativePercentage[i], this.trunc));
+1426.
+}
+1427.
+fout.println();
+1428.
+ 
+1429.
+ 
+1430.
+fout.close();
+1431.
+}
+1432.
+ 
+1433.
+// Output to an Excel readable file
+1434.
+private void analysisExcel(){
+1435.
+ 
+1436.
+FileOutput fout = null;
+1437.
+if(this.fileNumberingSet){
+1438.
+fout = new FileOutput(this.outputFilename, 'n');
+1439.
+}
+1440.
+else{
+1441.
+fout = new FileOutput(this.outputFilename);
+1442.
+}
+1443.
+ 
+1444.
+// perform PCA if not already performed
+1445.
+if(!pcaDone)this.pca();
+1446.
+if(!this.monteCarloDone)this.monteCarlo();
+1447.
+ 
+1448.
+// output title
+1449.
+fout.println("PRINCIPAL COMPONENT ANALYSIS");
+1450.
+fout.println("Program: PCA - Analysis Output");
+1451.
+for(int i=0; i<this.titleLines; i++)fout.println(title[i]);
+1452.
+Date d = new Date();
+1453.
+String day = DateFormat.getDateInstance().format(d);
+1454.
+String tim = DateFormat.getTimeInstance().format(d);
+1455.
+fout.println("Program executed at " + tim + " on " + day);
+1456.
+fout.println();
+1457.
+if(this.covRhoOption){
+1458.
+fout.println("Covariance matrix used");
+1459.
+}
+1460.
+else{
+1461.
+fout.println("Correlation matrix used");
+1462.
+}
+1463.
+fout.println();
+1464.
+ 
+1465.
+// output eigenvalue table
+1466.
+fout.println("ALL EIGENVALUES");
+1467.
+ 
+1468.
+fout.printtab("Component ");
+1469.
+fout.printtab("Unordered ");
+1470.
+fout.printtab("Eigenvalue ");
+1471.
+fout.printtab("Proportion ");
+1472.
+fout.printtab("Cumulative ");
+1473.
+fout.println("Difference ");
+1474.
+ 
+1475.
+fout.printtab(" ");
+1476.
+fout.printtab("index");
+1477.
+fout.printtab(" ");
+1478.
+fout.printtab("as % ");
+1479.
+fout.printtab("percentage ");
+1480.
+fout.println(" ");
+1481.
+ 
+1482.
+ 
+1483.
+ 
+1484.
+for(int i=0; i<this.nItems; i++){
+1485.
+fout.printtab(i+1);
+1486.
+fout.printtab((this.eigenValueIndices[i]+1));
+1487.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[i], this.trunc));
+1488.
+fout.printtab(Fmath.truncate(this.proportionPercentage[i], this.trunc));
+1489.
+fout.printtab(Fmath.truncate(this.cumulativePercentage[i], this.trunc));
+1490.
+if(i<this.nItems-1){
+1491.
+fout.printtab(Fmath.truncate((this.orderedEigenValues[i] - this.orderedEigenValues[i+1]), this.trunc));
+1492.
+}
+1493.
+else{
+1494.
+fout.printtab(" ");
+1495.
+}
+1496.
+fout.printtab(" ");
+1497.
+ 
+1498.
+fout.println();
+1499.
+}
+1500.
+fout.println();
+1501.
+ 
+1502.
+ 
+1503.
+// Extracted components
+1504.
+int nMax = this.greaterThanOneLimit;
+1505.
+if(nMax<this.meanCrossover)nMax=this.meanCrossover;
+1506.
+if(nMax<this.percentileCrossover)nMax=this.percentileCrossover;
+1507.
+fout.println("EXTRACTED EIGENVALUES");
+1508.
+fout.printtab(" ");
+1509.
+fout.printtab("Greater than unity");
+1510.
+fout.printtab(" ");fout.printtab(" ");fout.printtab(" ");
+1511.
+fout.printtab("Greater than Monte Carlo Mean ");
+1512.
+fout.printtab(" ");fout.printtab(" ");fout.printtab(" ");
+1513.
+fout.println("Greater than Monte Carlo Percentile");
+1514.
+ 
+1515.
+fout.printtab("Component ");
+1516.
+fout.printtab("Eigenvalue ");
+1517.
+fout.printtab("Proportion ");
+1518.
+fout.printtab("Cumulative ");
+1519.
+fout.printtab(" ");
+1520.
+ 
+1521.
+fout.printtab("Eigenvalue ");
+1522.
+fout.printtab("Proportion ");
+1523.
+fout.printtab("Cumulative ");
+1524.
+fout.printtab(" ");
+1525.
+ 
+1526.
+fout.printtab("Eigenvalue ");
+1527.
+fout.printtab("Proportion ");
+1528.
+fout.printtab("Cumulative ");
+1529.
+fout.println(" ");
+1530.
+ 
+1531.
+fout.printtab(" ");
+1532.
+fout.printtab(" ");
+1533.
+fout.printtab("as % ");
+1534.
+fout.printtab("percentage ");
+1535.
+fout.printtab(" ");
+1536.
+ 
+1537.
+fout.printtab(" ");
+1538.
+fout.printtab("as % ");
+1539.
+fout.printtab("percentage ");
+1540.
+fout.printtab(" ");
+1541.
+ 
+1542.
+fout.printtab(" ");
+1543.
+fout.printtab("as % ");
+1544.
+fout.printtab("percentage ");
+1545.
+fout.println(" ");
+1546.
+ 
+1547.
+int ii=0;
+1548.
+while(ii<nMax){
+1549.
+fout.printtab(ii+1);
+1550.
+ 
+1551.
+if(ii<this.greaterThanOneLimit){
+1552.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[ii], this.trunc));
+1553.
+fout.printtab(Fmath.truncate(this.proportionPercentage[ii], this.trunc));
+1554.
+fout.printtab(Fmath.truncate(this.cumulativePercentage[ii], this.trunc));
+1555.
+fout.printtab(" ");
+1556.
+}
+1557.
+ 
+1558.
+if(ii<this.meanCrossover){
+1559.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[ii], this.trunc));
+1560.
+fout.printtab(Fmath.truncate(this.proportionPercentage[ii], this.trunc));
+1561.
+fout.printtab(Fmath.truncate(this.cumulativePercentage[ii], this.trunc));
+1562.
+fout.printtab(" ");
+1563.
+}
+1564.
+ 
+1565.
+if(ii<this.percentileCrossover){
+1566.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[ii], this.trunc));
+1567.
+fout.printtab(Fmath.truncate(this.proportionPercentage[ii], this.trunc));
+1568.
+fout.printtab(Fmath.truncate(this.cumulativePercentage[ii], this.trunc));
+1569.
+}
+1570.
+fout.println();
+1571.
+ii++;
+1572.
+}
+1573.
+fout.println();
+1574.
+ 
+1575.
+ 
+1576.
+fout.println("PARALLEL ANALYSIS");
+1577.
+fout.println("Number of simulations = " + this.nMonteCarlo);
+1578.
+if(this.gaussianDeviates){
+1579.
+fout.println("Gaussian random deviates used");
+1580.
+}
+1581.
+else{
+1582.
+fout.println("Uniform random deviates used");
+1583.
+}
+1584.
+fout.println("Percentile value used = " + this.percentile + " %");
+1585.
+ 
+1586.
+fout.println();
+1587.
+fout.printtab("Component ");
+1588.
+fout.printtab("Data ");
+1589.
+fout.printtab("Proportion ");
+1590.
+fout.printtab("Cumulative ");
+1591.
+fout.printtab(" ");
+1592.
+fout.printtab("Data ");
+1593.
+fout.printtab("Monte Carlo ");
+1594.
+fout.printtab("Monte Carlo ");
+1595.
+fout.println("Monte Carlo ");
+1596.
+ 
+1597.
+fout.printtab(" ");
+1598.
+fout.printtab("Eigenvalue ");
+1599.
+fout.printtab("as % ");
+1600.
+fout.printtab("percentage ");
+1601.
+fout.printtab(" ");
+1602.
+fout.printtab("Eigenvalue ");
+1603.
+fout.printtab("Eigenvalue ");
+1604.
+fout.printtab("Eigenvalue ");
+1605.
+fout.println("Eigenvalue ");
+1606.
+ 
+1607.
+fout.printtab(" ");
+1608.
+fout.printtab(" ");
+1609.
+fout.printtab(" ");
+1610.
+fout.printtab(" ");
+1611.
+fout.printtab(" ");
+1612.
+fout.printtab(" ");
+1613.
+fout.printtab("Percentile ");
+1614.
+fout.printtab("Mean ");
+1615.
+fout.println("Standard Deviation ");
+1616.
+ 
+1617.
+for(int i=0; i<this.nItems; i++){
+1618.
+fout.printtab(i+1);
+1619.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[i], this.trunc));
+1620.
+fout.printtab(Fmath.truncate(this.proportionPercentage[i], this.trunc));
+1621.
+fout.printtab(Fmath.truncate(this.cumulativePercentage[i], this.trunc));
+1622.
+fout.printtab(" ");
+1623.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[i], this.trunc));
+1624.
+fout.printtab(Fmath.truncate(this.randomEigenValuesPercentiles[i], this.trunc));
+1625.
+fout.printtab(Fmath.truncate(this.randomEigenValuesMeans[i], this.trunc));
+1626.
+fout.println(Fmath.truncate(this.randomEigenValuesSDs[i], this.trunc));
+1627.
+}
+1628.
+fout.println();
+1629.
+ 
+1630.
+// Correlation Matrix
+1631.
+fout.println("CORRELATION MATRIX");
+1632.
+fout.println("Original component indices in parenthesis");
+1633.
+fout.println();
+1634.
+fout.printtab(" ");
+1635.
+fout.printtab("component");
+1636.
+for(int i=0; i<this.nItems; i++)fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1637.
+fout.println();
+1638.
+fout.println("component");
+1639.
+for(int i=0; i<this.nItems; i++){
+1640.
+fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1641.
+fout.printtab(" ");
+1642.
+for(int j=0; j<this.nItems; j++)fout.printtab(Fmath.truncate(this.correlationMatrix.getElement(j,i), this.trunc));
+1643.
+fout.println();
+1644.
+}
+1645.
+fout.println();
+1646.
+ 
+1647.
+// Covariance Matrix
+1648.
+fout.println("COVARIANCE MATRIX");
+1649.
+fout.println("Original component indices in parenthesis");
+1650.
+fout.println();
+1651.
+fout.printtab(" ");
+1652.
+fout.printtab("component");
+1653.
+for(int i=0; i<this.nItems; i++)fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1654.
+fout.println();
+1655.
+fout.println("component");
+1656.
+for(int i=0; i<this.nItems; i++){
+1657.
+fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1658.
+fout.printtab(" ");
+1659.
+for(int j=0; j<this.nItems; j++)fout.printtab(Fmath.truncate(this.covarianceMatrix.getElement(j,i), this.trunc));
+1660.
+fout.println();
+1661.
+}
+1662.
+fout.println();
+1663.
+ 
+1664.
+// Eigenvectors
+1665.
+fout.println("EIGENVECTORS");
+1666.
+fout.println("Original component indices in parenthesis");
+1667.
+fout.println("Vector corresponding to an ordered eigenvalues in each row");
+1668.
+fout.println();
+1669.
+fout.printtab(" ");
+1670.
+fout.printtab("component");
+1671.
+for(int i=0; i<this.nItems; i++)fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1672.
+fout.println();
+1673.
+fout.println("component");
+1674.
+ 
+1675.
+for(int i=0; i<this.nItems; i++){
+1676.
+fout.printtab((i+1) + " (" + (this.eigenValueIndices[i]+1) + ")");
+1677.
+fout.printtab(" ");
+1678.
+for(int j=0; j<this.nItems; j++)fout.printtab(Fmath.truncate(this.orderedEigenVectorsAsRows[i][j], this.trunc));
+1679.
+fout.println();
+1680.
+}
+1681.
+fout.println();
+1682.
+ 
+1683.
+// Loading factors
+1684.
+fout.println("LOADING FACTORS");
+1685.
+fout.println("Original  indices in parenthesis");
+1686.
+fout.println("Loading factors corresponding to an ordered eigenvalues in each row");
+1687.
+fout.println();
+1688.
+fout.printtab(" ");
+1689.
+fout.printtab("component");
+1690.
+for(int i=0; i<this.nItems; i++)fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1691.
+fout.printtab(" ");
+1692.
+fout.printtab("Eigenvalue");
+1693.
+fout.printtab("% Proportion");
+1694.
+fout.println("Cumulative %");
+1695.
+fout.println("factor");
+1696.
+for(int i=0; i<this.nItems; i++){
+1697.
+fout.printtab((i+1) + " (" + (this.eigenValueIndices[i]+1) + ")");
+1698.
+fout.printtab(" ");
+1699.
+for(int j=0; j<this.nItems; j++)fout.printtab(Fmath.truncate(this.loadingFactorsAsRows[i][j], this.trunc));
+1700.
+fout.printtab(" ");
+1701.
+fout.printtab(Fmath.truncate(this.orderedEigenValues[i], this.trunc));
+1702.
+fout.printtab(Fmath.truncate(proportionPercentage[i], this.trunc));
+1703.
+fout.println(Fmath.truncate(cumulativePercentage[i], this.trunc));
+1704.
+}
+1705.
+fout.println();
+1706.
+ 
+1707.
+// Rotated loading factors
+1708.
+fout.println("ROTATED LOADING FACTORS");
+1709.
+if(this.varimaxOption){
+1710.
+fout.println("NORMAL VARIMAX");
+1711.
+}
+1712.
+else{
+1713.
+fout.println("RAW VARIMAX");
+1714.
+}
+1715.
+ 
+1716.
+String message = "The ordered eigenvalues with Monte Carlo means and percentiles in parenthesis";
+1717.
+message += "\n (Total number of eigenvalues = " + this.nItems + ")";
+1718.
+int nDisplay = this.nItems;
+1719.
+Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+1720.
+int screenHeight = screenSize.height;
+1721.
+int nDisplayLimit = 20*screenHeight/800;
+1722.
+if(nDisplay>nDisplay)nDisplay = nDisplayLimit;
+1723.
+for(int i=0; i<nDisplay; i++){
+1724.
+message += "\n " + Fmath.truncate(this.orderedEigenValues[i], 4) + " (" + Fmath.truncate(this.randomEigenValuesMeans[i], 4) + "  " + Fmath.truncate(this.randomEigenValuesPercentiles[i], 4) + ")";
+1725.
+}
+1726.
+if(nDisplay<this.nItems)message += "\n . . . ";
+1727.
+message += "\nEnter number of eigenvalues to be extracted";
+1728.
+int nExtracted = this.greaterThanOneLimit;
+1729.
+nExtracted = Db.readInt(message, nExtracted);
+1730.
+this.varimaxRotation(nExtracted);
+1731.
+ 
+1732.
+fout.println("Varimax rotation for " + nExtracted + " extracted factors");
+1733.
+fout.println("Rotated loading factors and eigenvalues scaled to ensure total 'rotated variance' matches unrotated variance for the extracted factors");
+1734.
+fout.println("Original  indices in parenthesis");
+1735.
+fout.println();
+1736.
+fout.printtab(" ");
+1737.
+fout.printtab("component");
+1738.
+for(int i=0; i<this.nItems; i++)fout.printtab((this.eigenValueIndices[i]+1) + " (" + (i+1) + ")");
+1739.
+fout.printtab(" ");
+1740.
+fout.printtab("Eigenvalue");
+1741.
+fout.printtab("% Proportion");
+1742.
+fout.println("Cumulative %");
+1743.
+fout.println("factor");
+1744.
+for(int i=0; i<nExtracted; i++){
+1745.
+fout.printtab((i+1) + " (" + (this.eigenValueIndices[i]+1) + ")");
+1746.
+fout.printtab(" ");
+1747.
+for(int j=0; j<this.nItems; j++)fout.printtab(Fmath.truncate(this.rotatedLoadingFactorsAsRows[i][j], this.trunc));
+1748.
+fout.printtab(" ");
+1749.
+fout.printtab(Fmath.truncate(rotatedEigenValues[i], this.trunc));
+1750.
+fout.printtab(Fmath.truncate(rotatedProportionPercentage[i], this.trunc));
+1751.
+fout.println(Fmath.truncate(rotatedCumulativePercentage[i], this.trunc));
+1752.
+}
+1753.
+fout.println();
+1754.
+ 
+1755.
+fout.close();
+1756.
+}
+1757.
+}
